@@ -12,7 +12,7 @@
           ]
         }
       },
-      "id": "df991ec3-47c5-48be-90ef-a28bf24e2a10",
+      "id": "e65fe530-0ee4-4622-ad37-2e2b6d1c4d8d",
       "name": "Every Monday at 8",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -26,61 +26,61 @@
         "assignments": {
           "assignments": [
             {
-              "id": "af6e9421-4ce1-4bd0-9950-0dfe5c88d60e",
+              "id": "275f1ccc-b5e2-4a7b-86d6-4be6a9005923",
               "name": "pilot",
               "type": "string",
               "value": "uk-saas-q4"
             },
             {
-              "id": "b052feca-0ba1-4d80-8b4d-94148a177701",
+              "id": "f8afafac-bfa8-4564-a654-bd4c3402e1c7",
               "name": "start",
               "type": "string",
               "value": "2026-10-28"
             },
             {
-              "id": "8622ad77-ed87-487c-847a-9cc95ec9d9a1",
+              "id": "3678f523-717b-4d5e-904a-4a2f02a82996",
               "name": "weeks",
               "type": "string",
               "value": "6"
             },
             {
-              "id": "78530244-f8d1-430f-b688-7a8a61a95fe6",
+              "id": "36d2365d-64f5-423d-a0c0-9ee68d3e2b45",
               "name": "currency",
               "type": "string",
               "value": "GBP"
             },
             {
-              "id": "9a1b49a3-25f6-441c-85b8-c12569591bf6",
+              "id": "a2bd851b-8ad5-4dc1-a7be-22cfd6132a81",
               "name": "human_cost_per_month",
               "type": "string",
               "value": "5500"
             },
             {
-              "id": "ca21615b-0e2c-4876-bf84-d125f92c5741",
+              "id": "94e2b98a-c860-461d-94bd-d6799b4f9858",
               "name": "human_share_on_pilot",
               "type": "string",
               "value": "0.5"
             },
             {
-              "id": "3e938585-1ffd-49c3-abf0-90fd5f9a4db1",
+              "id": "ce5b7139-dee7-4902-aecc-57a6ec124130",
               "name": "ai_cost_per_month",
               "type": "string",
               "value": "900"
             },
             {
-              "id": "61e29ff7-379c-438e-85dd-9493f156b5fb",
+              "id": "695e8157-d38e-4872-8883-5a8537012dbf",
               "name": "ai_review_hours_per_week",
               "type": "string",
               "value": "3"
             },
             {
-              "id": "b3c22046-a592-4108-be65-a3e185a834e3",
+              "id": "bc702a0e-44b9-4cb2-99fa-bfc3f970b772",
               "name": "review_hourly_cost",
               "type": "string",
               "value": "45"
             },
             {
-              "id": "f8341403-befa-450c-9549-c44c4e09a678",
+              "id": "74822b54-d315-4b31-98ba-1f1eaf456523",
               "name": "min_meetings",
               "type": "string",
               "value": "10"
@@ -89,7 +89,7 @@
         },
         "options": {}
       },
-      "id": "98955b31-ee45-48dc-b6f0-98e78935af22",
+      "id": "39611748-9f6a-43c7-84d7-f54042ffc2cf",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -109,7 +109,7 @@
         "jsonBody": "={{ JSON.stringify({ limit: 200, properties: ['email', 'bdr_pilot_cohort', 'bdr_pilot_reply'], filterGroups: [{ filters: [{ propertyName: 'bdr_pilot', operator: 'EQ', value: $json.pilot }] }] }) }}",
         "options": {}
       },
-      "id": "c2c06e5a-4fe6-458c-8d6f-b8b9d69aad09",
+      "id": "bad10162-6683-4695-b296-ac61c2eb8d5d",
       "name": "Pilot contacts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -136,7 +136,7 @@
         "jsonBody": "={{ JSON.stringify({ inputs: ($json.results || []).map(c => ({ id: c.id })) }) }}",
         "options": {}
       },
-      "id": "d88ec3d5-d635-493f-ba4c-ed11d0fd1088",
+      "id": "b9136638-c40a-47bf-b4ca-6f56faa1f337",
       "name": "Their meetings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -169,7 +169,7 @@
           }
         }
       },
-      "id": "3a616d89-79fa-457e-92a9-2817ef183757",
+      "id": "9ef0373c-c9c1-427a-ac5d-05da989b1049",
       "name": "Meeting details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -187,9 +187,9 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Same as pilot.py score: meetings after the start that were not cancelled, cost per meeting per cohort.\nconst s = $('Settings').first().json;\nconst contacts = $('Pilot contacts').first().json.results || [];\nconst links = {};\nfor (const r of ($('Their meetings').first().json.results || [])) links[String(r.from.id)] = (r.to || []).map(t => String(t.toObjectId));\nconst good = new Set((($('Meeting details').first().json.results) || [])\n  .filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() !== 'CANCELED' && String(m.properties.hs_timestamp || '') >= s.start)\n  .map(m => String(m.id)));\nconst weeksRun = Math.max(1, Math.floor((Date.now() - Date.parse(s.start)) / 6048e5) + 1);\nconst weeks = Math.min(weeksRun, Number(s.weeks));\nconst month = weeks / 4.33;\nconst cost = { human: Number(s.human_cost_per_month) * Number(s.human_share_on_pilot) * month,\n  ai: Number(s.ai_cost_per_month) * month + Number(s.ai_review_hours_per_week) * Number(s.review_hourly_cost) * weeks };\nconst cohorts = {};\nfor (const side of ['ai', 'human']) {\n  const rows = contacts.filter(c => c.properties.bdr_pilot_cohort === side);\n  const met = rows.filter(c => (links[String(c.id)] || []).some(m => good.has(m))).length;\n  cohorts[side] = { people: rows.length, positive_replies: rows.filter(c => c.properties.bdr_pilot_reply === 'positive').length,\n    meetings: met, meetings_per_100: rows.length ? Math.round(1000 * met / rows.length) / 10 : 0,\n    cost: Math.round(cost[side]), cost_per_meeting: met ? Math.round(cost[side] / met) : null };\n}\nconst low = Object.keys(cohorts).filter(k => cohorts[k].meetings < Number(s.min_meetings));\nconst verdict = low.length ? 'too early' : (cohorts.ai.cost_per_meeting < cohorts.human.cost_per_meeting ? 'ai cheaper' : 'human cheaper');\nreturn [{ json: { pilot: s.pilot, start: s.start, weeks_counted: weeks, currency: s.currency, min_meetings: Number(s.min_meetings), cohorts, verdict } }];\n"
+        "jsCode": "\n// Same as pilot.py score: meetings after the start, booked (not cancelled) and held (Completed), cost per held meeting.\nconst s = $('Settings').first().json;\nconst contacts = $('Pilot contacts').first().json.results || [];\nconst links = {};\nfor (const r of ($('Their meetings').first().json.results || [])) links[String(r.from.id)] = (r.to || []).map(t => String(t.toObjectId));\nconst all = (($('Meeting details').first().json.results) || []).filter(m => String(m.properties.hs_timestamp || '') >= s.start);\nconst booked = new Set(all.filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() !== 'CANCELED').map(m => String(m.id)));\nconst held = new Set(all.filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() === 'COMPLETED').map(m => String(m.id)));\nconst weeksRun = Math.max(1, Math.floor((Date.now() - Date.parse(s.start)) / 6048e5) + 1);\nconst weeks = Math.min(weeksRun, Number(s.weeks));\nconst month = weeks / 4.33;\nconst cost = { human: Number(s.human_cost_per_month) * Number(s.human_share_on_pilot) * month,\n  ai: Number(s.ai_cost_per_month) * month + Number(s.ai_review_hours_per_week) * Number(s.review_hourly_cost) * weeks };\nconst cohorts = {};\nfor (const side of ['ai', 'human']) {\n  const rows = contacts.filter(c => c.properties.bdr_pilot_cohort === side);\n  const has = set => rows.filter(c => (links[String(c.id)] || []).some(m => set.has(m))).length;\n  const b = has(booked), h = has(held);\n  cohorts[side] = { people: rows.length, positive_replies: rows.filter(c => c.properties.bdr_pilot_reply === 'positive').length,\n    meetings_booked: b, meetings_held: h, show_rate_pct: b ? Math.round(100 * h / b) : null,\n    cost: Math.round(cost[side]), cost_per_held_meeting: h ? Math.round(cost[side] / h) : null };\n}\nconst low = Object.keys(cohorts).filter(k => cohorts[k].meetings_held < Number(s.min_meetings));\nconst verdict = low.length ? 'too early' : (cohorts.ai.cost_per_held_meeting < cohorts.human.cost_per_held_meeting ? 'ai cheaper' : 'human cheaper');\nreturn [{ json: { pilot: s.pilot, start: s.start, weeks_counted: weeks, currency: s.currency, min_meetings: Number(s.min_meetings), cohorts, verdict } }];\n"
       },
-      "id": "b6353e29-38b0-4c80-b04f-23cbdafe71bc",
+      "id": "b10db9f1-0606-4f23-88e8-a742e6db2413",
       "name": "Score",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -204,11 +204,11 @@
         "hasOutputParser": true,
         "text": "={{ JSON.stringify($json) }}",
         "options": {
-          "systemMessage": "You write the weekly readout of an AI BDR vs human BDR pilot for a sales leader. Use only the numbers in the JSON. Never invent a number, a reason or a trend.\n\nReturn {readout}: under 120 words, plain text.\n- Line 1: the verdict. If the verdict is \"too early\", say \"Too early to call\" and how many meetings each side still needs; never say who wins or leads.\n- Then one line per cohort: people, meetings, positive replies, money spent so far, and the cost per meeting when there is one, with the currency.\n- Never guess anyone's gender.",
+          "systemMessage": "You write the weekly readout of an AI BDR vs human BDR pilot for a sales leader. Use only the numbers in the JSON. Never invent a number, a reason or a trend.\n\nReturn {readout}: under 120 words, plain text.\n- Line 1: the verdict, on the cost per HELD meeting. If the verdict is \"too early\", say \"Too early to call\" and how many held meetings each side still needs; never say who wins or leads.\n- Then one line per cohort: people, meetings booked, meetings held, positive replies, money spent so far, and the cost per held meeting when there is one, with the currency.\n- Never guess anyone's gender.",
           "maxIterations": 3
         }
       },
-      "id": "655a8e1e-72e6-4adf-b4d5-b873aef0a22e",
+      "id": "18bde150-c040-41e1-8395-2fcd3778441a",
       "name": "Weekly readout",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
@@ -232,7 +232,7 @@
           "maxTokensToSample": 2000
         }
       },
-      "id": "88ae32fb-995f-463f-9de2-60edcde9e36e",
+      "id": "75480e59-db31-433a-9544-3f8eab2485d1",
       "name": "Claude",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
@@ -252,7 +252,7 @@
         "schemaType": "manual",
         "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\n    \"readout\"\n  ],\n  \"properties\": {\n    \"readout\": {\n      \"type\": \"string\"\n    }\n  }\n}"
       },
-      "id": "9f5c182d-9f64-49df-ae2b-621da6b794f0",
+      "id": "bfe07f6f-dd2a-4b64-b31b-9b1bdf11d98f",
       "name": "Readout",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -263,9 +263,9 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Same as pilot.py check: the readout quotes the real numbers and calls no winner before the minimum.\nconst sc = $('Score').first().json;\nconst text = String($json.output.readout || '');\nconst flat = text.replace(/,/g, '');\nconst problems = [];\nfor (const [side, v] of Object.entries(sc.cohorts)) {\n  for (const key of ['people', 'meetings']) if (!new RegExp('\\\\b' + v[key] + '\\\\b').test(flat)) problems.push(`${side} ${key} missing`);\n  if (v.cost_per_meeting && !flat.includes(String(v.cost_per_meeting))) problems.push(`${side} cost per meeting missing`);\n}\nif (sc.verdict === 'too early') {\n  if (!/too early/i.test(text)) problems.push('must say too early');\n  if (/\\b(wins?|won|winner|beats?|outperform\\w*)\\b/i.test(text)) problems.push('calls a winner too early');\n}\nif (/\\b(he|she|him|her|his|hers)\\b/i.test(text)) problems.push('guesses a gender');\nconst a = sc.cohorts.ai, h = sc.cohorts.human;\nreturn [{ json: { week_of: new Date().toISOString().slice(0, 10), pilot: sc.pilot, verdict: sc.verdict,\n  ai_people: a.people, ai_meetings: a.meetings, ai_cost_per_meeting: a.cost_per_meeting ?? 0,\n  human_people: h.people, human_meetings: h.meetings, human_cost_per_meeting: h.cost_per_meeting ?? 0,\n  readout: text, check: problems.length ? 'FAIL: ' + problems.join('; ') : 'OK' } }];\n"
+        "jsCode": "\n// Same as pilot.py check: the readout quotes the real numbers and calls no winner before the minimum.\nconst sc = $('Score').first().json;\nconst text = String($json.output.readout || '');\nconst flat = text.replace(/,/g, '');\nconst problems = [];\nfor (const [side, v] of Object.entries(sc.cohorts)) {\n  for (const key of ['people', 'meetings_booked', 'meetings_held']) if (!new RegExp('\\\\b' + v[key] + '\\\\b').test(flat)) problems.push(`${side} ${key} missing`);\n  if (v.cost_per_held_meeting && !flat.includes(String(v.cost_per_held_meeting))) problems.push(`${side} cost per held meeting missing`);\n}\nif (sc.verdict === 'too early') {\n  if (!/too early/i.test(text)) problems.push('must say too early');\n  if (/\\b(wins?|won|winner|beats?|outperform\\w*)\\b/i.test(text)) problems.push('calls a winner too early');\n}\nif (/\\b(he|she|him|her|his|hers)\\b/i.test(text)) problems.push('guesses a gender');\nconst a = sc.cohorts.ai, h = sc.cohorts.human;\nreturn [{ json: { week_of: new Date().toISOString().slice(0, 10), pilot: sc.pilot, verdict: sc.verdict,\n  ai_people: a.people, ai_booked: a.meetings_booked, ai_held: a.meetings_held, ai_cost_per_held_meeting: a.cost_per_held_meeting ?? 0,\n  human_people: h.people, human_booked: h.meetings_booked, human_held: h.meetings_held, human_cost_per_held_meeting: h.cost_per_held_meeting ?? 0,\n  readout: text, check: problems.length ? 'FAIL: ' + problems.join('; ') : 'OK' } }];\n"
       },
-      "id": "b1caebd6-23ea-4cfd-bd90-d1fbe102c65b",
+      "id": "6b97c5b0-9873-4e12-8b93-79ad3c20f95a",
       "name": "Check the readout",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -289,7 +289,7 @@
         },
         "options": {}
       },
-      "id": "dfe04f6d-0be8-47f3-a7a4-90a3424f4c5c",
+      "id": "c7485453-c5b0-436f-99b5-9efab86cacd7",
       "name": "Add to Pilot readouts",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,

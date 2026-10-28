@@ -1,4 +1,4 @@
-"""AI BDR vs human BDR pilot: one Evaboot list, two matched cohorts, one cost per meeting for each side.
+"""AI BDR vs human BDR pilot: one Evaboot list, two matched cohorts, one cost per held meeting for each side.
 
     python3 pilot.py facts data/export.json > queue/leads.json
         one row per person with a safe email, from an Evaboot export
@@ -9,7 +9,7 @@
     python3 pilot.py push queue/cohorts.json [--apply]
         tags both cohorts in HubSpot and writes queue/ai-cohort.csv for your AI BDR tool; dry run unless --apply
     python3 pilot.py score > queue/score.json
-        replies and meetings per cohort from HubSpot, costs from PILOT.md, cost per meeting
+        meetings booked and held per cohort from HubSpot, costs from PILOT.md, cost per held meeting
     python3 pilot.py check queue/score.json queue/readout.md
         the readout quotes the real numbers and calls no winner before the minimum
 
@@ -215,7 +215,7 @@ def pilot_contacts(name):
 
 
 def meetings(contact_ids, since):
-    """Contacts with at least one meeting since the pilot start that was not cancelled."""
+    """Contacts with a meeting since the pilot start: booked (not cancelled) and held (outcome Completed)."""
     links = {}
     for i in range(0, len(contact_ids), 100):
         status, d = call("POST", "/crm/v4/associations/contacts/meetings/batch/read",
@@ -223,21 +223,25 @@ def meetings(contact_ids, since):
         for r in d.get("results", []):
             links[r["from"]["id"]] = [t["toObjectId"] for t in r.get("to", [])]
     ids = sorted({str(m) for ms in links.values() for m in ms})
-    good = set()
+    booked, held = set(), set()
     for i in range(0, len(ids), 100):
         status, d = call("POST", "/crm/v3/objects/meetings/batch/read",
                          {"properties": ["hs_timestamp", "hs_meeting_outcome"], "inputs": [{"id": m} for m in ids[i:i + 100]]})
         for m in d.get("results", []):
             p = m["properties"]
-            if (p.get("hs_meeting_outcome") or "").upper() != "CANCELED" and (p.get("hs_timestamp") or "") >= since:
-                good.add(m["id"])
-    return {c for c, ms in links.items() if any(str(m) in good for m in ms)}
+            outcome = (p.get("hs_meeting_outcome") or "").upper()
+            if outcome != "CANCELED" and (p.get("hs_timestamp") or "") >= since:
+                booked.add(m["id"])
+                if outcome == "COMPLETED":
+                    held.add(m["id"])
+    return ({c for c, ms in links.items() if any(str(m) in booked for m in ms)},
+            {c for c, ms in links.items() if any(str(m) in held for m in ms)})
 
 
 def score():
     s = settings()
     contacts = pilot_contacts(s["pilot"])
-    met = meetings([c["id"] for c in contacts], s["start"])
+    booked, held = meetings([c["id"] for c in contacts], s["start"])
     weeks_run = max(1, (date.today() - date.fromisoformat(s["start"])).days // 7 + 1)
     weeks = min(weeks_run, int(s["weeks"]))
     month = weeks / 4.33
@@ -248,20 +252,21 @@ def score():
            "min_meetings": int(s["min_meetings"]), "cohorts": {}}
     for side in ("ai", "human"):
         rows = [c for c in contacts if c["properties"].get("bdr_pilot_cohort") == side]
-        n_met = sum(c["id"] in met for c in rows)
+        n_booked = sum(c["id"] in booked for c in rows)
+        n_held = sum(c["id"] in held for c in rows)
         pos = sum(c["properties"].get("bdr_pilot_reply") == "positive" for c in rows)
-        out["cohorts"][side] = {"people": len(rows), "positive_replies": pos, "meetings": n_met,
-                                "meetings_per_100": round(100 * n_met / len(rows), 1) if rows else 0,
-                                "cost": round(cost[side]), "cost_per_meeting": round(cost[side] / n_met) if n_met else None}
-    low = [k for k, v in out["cohorts"].items() if v["meetings"] < out["min_meetings"]]
+        out["cohorts"][side] = {"people": len(rows), "positive_replies": pos, "meetings_booked": n_booked,
+                                "meetings_held": n_held, "show_rate_pct": round(100 * n_held / n_booked) if n_booked else None,
+                                "cost": round(cost[side]), "cost_per_held_meeting": round(cost[side] / n_held) if n_held else None}
+    low = [k for k, v in out["cohorts"].items() if v["meetings_held"] < out["min_meetings"]]
     if low:
         out["verdict"] = "too early"
-        out["why"] = f"{' and '.join(low)} below {out['min_meetings']} meetings"
+        out["why"] = f"{' and '.join(low)} below {out['min_meetings']} held meetings"
     else:
-        a, h = out["cohorts"]["ai"]["cost_per_meeting"], out["cohorts"]["human"]["cost_per_meeting"]
+        a, h = out["cohorts"]["ai"]["cost_per_held_meeting"], out["cohorts"]["human"]["cost_per_held_meeting"]
         out["verdict"] = "ai cheaper" if a < h else "human cheaper"
-    print(f"{s['pilot']}, week {weeks}: AI {out['cohorts']['ai']['meetings']} meetings, human "
-          f"{out['cohorts']['human']['meetings']} meetings, verdict: {out['verdict']}", file=sys.stderr)
+    print(f"{s['pilot']}, week {weeks}: AI {out['cohorts']['ai']['meetings_held']} held meetings, human "
+          f"{out['cohorts']['human']['meetings_held']} held meetings, verdict: {out['verdict']}", file=sys.stderr)
     return out
 
 
@@ -270,11 +275,11 @@ def check(score_path, readout_path):
     flat = text.replace(",", "")
     problems = []
     for side, v in sc["cohorts"].items():
-        for key in ("people", "meetings"):
+        for key in ("people", "meetings_booked", "meetings_held"):
             if not re.search(rf"\b{v[key]}\b", flat):
                 problems.append(f"{side} {key} ({v[key]}) is not in the readout")
-        if v["cost_per_meeting"] and str(v["cost_per_meeting"]) not in flat:
-            problems.append(f"{side} cost per meeting ({v['cost_per_meeting']}) is not in the readout")
+        if v["cost_per_held_meeting"] and str(v["cost_per_held_meeting"]) not in flat:
+            problems.append(f"{side} cost per held meeting ({v['cost_per_held_meeting']}) is not in the readout")
     if sc["verdict"] == "too early":
         if "too early" not in text.lower():
             problems.append("the score says too early: the readout must say so")

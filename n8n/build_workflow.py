@@ -1,7 +1,7 @@
 """Builds n8n/ai-bdr-pilot.json. Run: python3 n8n/build_workflow.py
 
 Every Monday at 8, the workflow reads the pilot's contacts from HubSpot, counts the meetings of each cohort
-since the start (cancelled ones left out), works out the cost per meeting from your settings, asks Claude for
+since the start (booked, and held = outcome Completed), works out the cost per held meeting from your settings, asks Claude for
 a short readout and adds one row to the "Pilot readouts" Data table. Same rules as pilot.py score and check.
 The split and the push are one-off steps: run them with pilot.py.
 """
@@ -39,14 +39,14 @@ def hubspot(name, url, body_expr, pos):
 
 
 SCORE_JS = r"""
-// Same as pilot.py score: meetings after the start that were not cancelled, cost per meeting per cohort.
+// Same as pilot.py score: meetings after the start, booked (not cancelled) and held (Completed), cost per held meeting.
 const s = $('Settings').first().json;
 const contacts = $('Pilot contacts').first().json.results || [];
 const links = {};
 for (const r of ($('Their meetings').first().json.results || [])) links[String(r.from.id)] = (r.to || []).map(t => String(t.toObjectId));
-const good = new Set((($('Meeting details').first().json.results) || [])
-  .filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() !== 'CANCELED' && String(m.properties.hs_timestamp || '') >= s.start)
-  .map(m => String(m.id)));
+const all = (($('Meeting details').first().json.results) || []).filter(m => String(m.properties.hs_timestamp || '') >= s.start);
+const booked = new Set(all.filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() !== 'CANCELED').map(m => String(m.id)));
+const held = new Set(all.filter(m => String(m.properties.hs_meeting_outcome || '').toUpperCase() === 'COMPLETED').map(m => String(m.id)));
 const weeksRun = Math.max(1, Math.floor((Date.now() - Date.parse(s.start)) / 6048e5) + 1);
 const weeks = Math.min(weeksRun, Number(s.weeks));
 const month = weeks / 4.33;
@@ -55,13 +55,14 @@ const cost = { human: Number(s.human_cost_per_month) * Number(s.human_share_on_p
 const cohorts = {};
 for (const side of ['ai', 'human']) {
   const rows = contacts.filter(c => c.properties.bdr_pilot_cohort === side);
-  const met = rows.filter(c => (links[String(c.id)] || []).some(m => good.has(m))).length;
+  const has = set => rows.filter(c => (links[String(c.id)] || []).some(m => set.has(m))).length;
+  const b = has(booked), h = has(held);
   cohorts[side] = { people: rows.length, positive_replies: rows.filter(c => c.properties.bdr_pilot_reply === 'positive').length,
-    meetings: met, meetings_per_100: rows.length ? Math.round(1000 * met / rows.length) / 10 : 0,
-    cost: Math.round(cost[side]), cost_per_meeting: met ? Math.round(cost[side] / met) : null };
+    meetings_booked: b, meetings_held: h, show_rate_pct: b ? Math.round(100 * h / b) : null,
+    cost: Math.round(cost[side]), cost_per_held_meeting: h ? Math.round(cost[side] / h) : null };
 }
-const low = Object.keys(cohorts).filter(k => cohorts[k].meetings < Number(s.min_meetings));
-const verdict = low.length ? 'too early' : (cohorts.ai.cost_per_meeting < cohorts.human.cost_per_meeting ? 'ai cheaper' : 'human cheaper');
+const low = Object.keys(cohorts).filter(k => cohorts[k].meetings_held < Number(s.min_meetings));
+const verdict = low.length ? 'too early' : (cohorts.ai.cost_per_held_meeting < cohorts.human.cost_per_held_meeting ? 'ai cheaper' : 'human cheaper');
 return [{ json: { pilot: s.pilot, start: s.start, weeks_counted: weeks, currency: s.currency, min_meetings: Number(s.min_meetings), cohorts, verdict } }];
 """
 
@@ -72,8 +73,8 @@ const text = String($json.output.readout || '');
 const flat = text.replace(/,/g, '');
 const problems = [];
 for (const [side, v] of Object.entries(sc.cohorts)) {
-  for (const key of ['people', 'meetings']) if (!new RegExp('\\b' + v[key] + '\\b').test(flat)) problems.push(`${side} ${key} missing`);
-  if (v.cost_per_meeting && !flat.includes(String(v.cost_per_meeting))) problems.push(`${side} cost per meeting missing`);
+  for (const key of ['people', 'meetings_booked', 'meetings_held']) if (!new RegExp('\\b' + v[key] + '\\b').test(flat)) problems.push(`${side} ${key} missing`);
+  if (v.cost_per_held_meeting && !flat.includes(String(v.cost_per_held_meeting))) problems.push(`${side} cost per held meeting missing`);
 }
 if (sc.verdict === 'too early') {
   if (!/too early/i.test(text)) problems.push('must say too early');
@@ -82,16 +83,16 @@ if (sc.verdict === 'too early') {
 if (/\b(he|she|him|her|his|hers)\b/i.test(text)) problems.push('guesses a gender');
 const a = sc.cohorts.ai, h = sc.cohorts.human;
 return [{ json: { week_of: new Date().toISOString().slice(0, 10), pilot: sc.pilot, verdict: sc.verdict,
-  ai_people: a.people, ai_meetings: a.meetings, ai_cost_per_meeting: a.cost_per_meeting ?? 0,
-  human_people: h.people, human_meetings: h.meetings, human_cost_per_meeting: h.cost_per_meeting ?? 0,
+  ai_people: a.people, ai_booked: a.meetings_booked, ai_held: a.meetings_held, ai_cost_per_held_meeting: a.cost_per_held_meeting ?? 0,
+  human_people: h.people, human_booked: h.meetings_booked, human_held: h.meetings_held, human_cost_per_held_meeting: h.cost_per_held_meeting ?? 0,
   readout: text, check: problems.length ? 'FAIL: ' + problems.join('; ') : 'OK' } }];
 """
 
 READOUT_SYSTEM = """You write the weekly readout of an AI BDR vs human BDR pilot for a sales leader. Use only the numbers in the JSON. Never invent a number, a reason or a trend.
 
 Return {readout}: under 120 words, plain text.
-- Line 1: the verdict. If the verdict is "too early", say "Too early to call" and how many meetings each side still needs; never say who wins or leads.
-- Then one line per cohort: people, meetings, positive replies, money spent so far, and the cost per meeting when there is one, with the currency.
+- Line 1: the verdict, on the cost per HELD meeting. If the verdict is "too early", say "Too early to call" and how many held meetings each side still needs; never say who wins or leads.
+- Then one line per cohort: people, meetings booked, meetings held, positive replies, money spent so far, and the cost per held meeting when there is one, with the currency.
 - Never guess anyone's gender."""
 
 node("Every Monday at 8", "n8n-nodes-base.scheduleTrigger", 1.2, {"rule": {"interval": [

@@ -1,11 +1,11 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.png">
-  <img src=".github/assets/banner-light.png" alt="AI BDR pilot: one Evaboot list, split into two matched cohorts, tracked in HubSpot, with a weekly cost per meeting for each side" width="1280">
+  <img src=".github/assets/banner-light.png" alt="AI BDR pilot: one Evaboot list, split into two matched cohorts, tracked in HubSpot, with a weekly cost per held meeting for each side" width="1280">
 </picture>
 
 # AI BDR pilot
 
-Your AI Agent runs a fair AI BDR vs human BDR test: one Evaboot list split into two matched cohorts, both tracked in HubSpot, and a weekly readout of meetings and cost per meeting that calls no winner too early.
+Your AI Agent runs a fair AI BDR vs human BDR test: one Evaboot list split into two matched cohorts, both tracked in HubSpot, and a weekly readout of meetings booked, meetings held and cost per held meeting that calls no winner too early.
 
 [![Works with Claude Code · Codex · Cursor](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-5719D9)](AGENTS.md)
 [![MCP server](https://img.shields.io/badge/MCP-mcp.evaboot.com-5719D9)](https://evaboot.com/mcp)
@@ -55,7 +55,14 @@ companies on both sides: 0
 
 **3. Both sides in HubSpot.** `pilot.py push` tags every contact with the pilot and its cohort, leaves out anyone already in your CRM, and writes `queue/ai-cohort.csv` for your AI BDR tool.
 
-**4. A weekly cost per meeting.** `pilot.py score` counts the meetings logged on each side since the start, cancelled ones left out, and divides what each side cost. Under 10 meetings a side, the verdict is "too early", and `pilot.py check` rejects a readout that calls a winner.
+**4. A weekly cost per held meeting.** `pilot.py score` counts the meetings booked and the meetings held on each side since the start, and divides what each side cost by the held ones. A booked meeting that never happens costs the same and is worth nothing. Under 10 held meetings a side, the verdict is "too early", and `pilot.py check` rejects a readout that calls a winner.
+
+```text
+$ python3 pilot.py score > queue/score.json
+test-run, week 1: AI 1 held meetings, human 2 held meetings, verdict: human cheaper
+```
+
+In our test, the AI side was cheaper per booked meeting (£171 against £318) and dearer per held meeting (£343 against £318): one of its two meetings was a no-show.
 
 **5. Or get the readout in n8n.** Every Monday at 8, the same score and a Claude readout in an n8n Data table.
 
