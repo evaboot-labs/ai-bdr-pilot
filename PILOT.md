@@ -26,12 +26,12 @@ min_meetings: 10
 | `ai_cost_per_month` | The AI BDR tool, its sending domains and mailboxes, and its data. |
 | `ai_review_hours_per_week` | The time a person spends checking the AI's emails and replies. It is never zero. |
 | `review_hourly_cost` | The hourly cost of that person. |
-| `min_meetings` | No winner is called before each side has this many meetings. Under 10, one good week decides the result. |
+| `min_meetings` | No winner is called before each side has this many held meetings. Under 10, one good week decides the result. |
 
 ## The rules of a fair pilot
 
 - **Same list, same week.** Both cohorts come from one Evaboot export and start on the same day.
 - **Whole companies on one side.** Two colleagues never get two different BDRs.
 - **Only new people.** Anyone already in your CRM is left out: someone may already talk to them.
-- **One meeting definition.** A meeting is a HubSpot meeting linked to the contact, after `start`, not cancelled.
+- **One meeting definition.** A meeting is a HubSpot meeting linked to the contact, after `start`. It is booked if it is not cancelled, and held only when its outcome is *Completed*. Set the outcome after every meeting, on both sides: the verdict uses held meetings.
 - **A positive reply is set by a person**, in `bdr_pilot_reply`, for both sides alike.

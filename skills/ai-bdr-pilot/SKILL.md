@@ -1,6 +1,6 @@
 ---
 name: ai-bdr-pilot
-description: Run a fair AI BDR vs human BDR pilot - split one Evaboot (Sales Navigator) export into two matched cohorts with whole companies on one side, tag both in HubSpot, hand the AI cohort to an AI BDR tool as a CSV, then score meetings and cost per meeting for each side every week and write a readout that calls no winner too early. Use when the user wants to compare an AI BDR or AI SDR with human reps, run a BDR pilot, or measure cost per meeting.
+description: Run a fair AI BDR vs human BDR pilot - split one Evaboot (Sales Navigator) export into two matched cohorts with whole companies on one side, tag both in HubSpot, hand the AI cohort to an AI BDR tool as a CSV, then score meetings booked, meetings held and cost per held meeting for each side every week and write a readout that calls no winner too early. Use when the user wants to compare an AI BDR or AI SDR with human reps, run a BDR pilot, or measure cost per meeting.
 ---
 
 # AI BDR pilot
@@ -52,7 +52,8 @@ Show the dry run: people already in HubSpot are left out, because someone may al
 
 - Import `queue/ai-cohort.csv` into the AI BDR tool and start it on the `start` date.
 - Give the human cohort (HubSpot filter `BDR pilot cohort = Human BDR`) to the BDR the same day.
-- Log every meeting in HubSpot on the contact. Set `BDR pilot reply` to Positive or Negative when a person replies, on both sides.
+- Log every meeting in HubSpot on the contact, and set its outcome after the call: *Completed*, *No show* or *Canceled*. Only *Completed* counts as held.
+- Set `BDR pilot reply` to Positive or Negative when a person replies, on both sides.
 
 ## Step 4: every week
 
@@ -60,7 +61,7 @@ Show the dry run: people already in HubSpot are left out, because someone may al
 python3 pilot.py score > queue/score.json
 ```
 
-Write `queue/readout.md`, under 200 words: the verdict first, then one line per cohort with people, meetings, positive replies, money spent and cost per meeting. Then:
+Write `queue/readout.md`, under 200 words: the verdict first, then one line per cohort with people, meetings booked, meetings held, positive replies, money spent and cost per held meeting. If one side books more but holds fewer, say so. Then:
 
 ```bash
 python3 pilot.py check queue/score.json queue/readout.md
