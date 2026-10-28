@@ -1,0 +1,7 @@
+{"layout": "flow", "eyebrow": "evaboot-labs · ai-bdr-pilot", "headline": "AI BDR vs human BDR.",
+ "subline": "One list, two matched cohorts, one cost per meeting for each side.",
+ "nodes": [{"label": "01 · List", "title": "Evaboot", "caption": "One Sales Navigator export"},
+           {"label": "02 · Split", "title": "pilot.py", "caption": "Whole companies, even mix"},
+           {"label": "03 · Track", "title": "HubSpot", "caption": "Cohort tag, meetings"},
+           {"label": "04 · Readout", "title": "AI Agent", "caption": "Cost per meeting, weekly"}],
+ "spec": "no winner before 10 meetings a side · colleagues never split"}

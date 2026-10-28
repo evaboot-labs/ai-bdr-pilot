@@ -1,0 +1,14 @@
+{
+  "name": "evaboot-labs-ai-bdr-pilot",
+  "owner": { "name": "Evaboot", "url": "https://evaboot.com" },
+  "metadata": {
+    "description": "AI BDR vs human BDR, measured: one Evaboot list, two matched cohorts in HubSpot, a weekly cost per meeting for each side."
+  },
+  "plugins": [
+    {
+      "name": "ai-bdr-pilot",
+      "source": "./",
+      "description": "Your AI Agent runs a fair AI BDR vs human BDR pilot: one Evaboot list split into two matched cohorts, both tracked in HubSpot, and a weekly cost-per-meeting readout that calls no winner too early."
+    }
+  ]
+}
